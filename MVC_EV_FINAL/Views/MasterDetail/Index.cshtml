@@ -1,0 +1,265 @@
+﻿@model IEnumerable<MVC_EV_FINAL.Models.Client>
+@{
+    ViewBag.Title = "Index";
+}
+<div class="d-flex justify-content-end mb-2">
+    <a href="#" id="btnCreate" class="btn btn-primary"><i class="fa fa-plus pr-2"></i>Add New</a>
+</div>
+
+<div>
+    @if (Model.Count() > 0)
+    {
+        foreach (var client in Model)
+        {
+            <div class="card mb-2">
+                <div class="card-header d-flex justify-content-between">
+                    <div>
+                        <label>Client : @Html.DisplayFor(x => client.ClientName)</label>
+                        @Html.HiddenFor(x => client.ClientId)
+                        @Html.HiddenFor(x => client.ClientName)
+                        @Html.HiddenFor(x => client.BirthDate)
+                        @Html.HiddenFor(x => client.Age)
+                        @Html.HiddenFor(x => client.Picture)
+                        @Html.HiddenFor(x => client.MaritalStatus)
+                        @foreach (var entry in client.bookingEntries)
+                        {
+                            @Html.Hidden("singleSpot", entry.SpotId)
+                        }
+
+                    </div>
+                    <div>
+                        <a href="#" id="btnEntryEdit" class="btn btn-primary"><i class="fa fa-edit pr-2"></i></a>
+                        <a href="@Url.Action("Delete", "MasterDetail", new { id = client.ClientId})" id="btnEntryDelete" class="btn btn-danger"><i class="fa fa-trash pr-2"></i></a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Spot Id</th>
+                                <th>Spot Name</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in client.bookingEntries)
+                            {
+                                <tr>
+                                    <td>@Html.DisplayFor(x => item.Spot.SpotId)</td>
+                                    <td>@Html.DisplayFor(x => item.Spot.SpotName)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="alert alert-warning">No Data Found</div>
+    }
+</div>
+
+<div>
+    <div id="BookingModal" class="modal fade">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h3 class="modal-title"><label id="title"></label></h3>
+                </div>
+
+                <div class="modal-body row">
+
+                    <div class="col-md-6">
+
+                        <div class="form-group">
+                            <input type="hidden" id="ClientId" value="" />
+                            <label class="col-form-label">Client Name</label>
+                            <input type="text" class="form-control" id="ClientName" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-form-label">Date of Birth</label>
+                            <input type="date" class="form-control" id="Dob" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-form-label">Age</label>
+                            <input type="number" class="form-control" id="Age" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="col-form-label">Picture</label>
+                            <input type="file" class="form-control" id="Picture" />
+                        </div>
+                        <div class="form-group">
+                            <img width="32" id="clientPicture"/>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="MaritalStatus" class="col-form-label">Married?</label>
+                            <input type="checkbox" name="MaritalStatus" id="MaritalStatus" class="form-check d-inline ml-2" />
+                        </div>
+
+
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-end">
+                            <a href="#" id="btnPlus" class="btn btn-warning mr-2"><i class="fa fa-plus"></i></a>
+                        </div>
+                        <label class="col-form-label">Select Spot</label>
+                        <div id="SpotContainer">
+                            @Html.Action("AddNewSpot", "MasterDetail")
+                        </div>
+                    </div>
+
+
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" id="btnSave" class="btn btn-primary"><span class="glyphicon glyphicon-save"></span> Save</button>
+                    <button type="button" id="btnCancel" class="btn btn-warning" data-dismiss="modal"><span class="glyphicon glyphicon-refresh"></span> Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts{
+    <script>
+
+        $(document).ready(
+
+        );
+
+        $("#btnCreate").click(function (e) {
+            e.preventDefault();
+            $("#BookingModal").modal('show');
+        });
+        $("#btnPlus").click(function (e) {
+            e.preventDefault();
+
+            var spotContainer = $("#SpotContainer");
+            $.ajax({
+                url: "/MasterDetail/AddNewSpot",
+                type: "GET",
+                success: function (data) {
+                    spotContainer.append(data);
+                }
+            });
+
+        });
+
+        $(document).on("click", "#btnDeleteSpot", function (e) {
+            e.preventDefault();
+            $(this).parent().parent().remove();
+        });
+
+        $("#btnSave").click(function (e) {
+            e.preventDefault();
+            AddClient();
+        });
+
+        function AddClient() {
+
+            var data = new FormData();
+
+            var clientData = {
+                ClientName: $("#ClientName").val(),
+                BirthDate: $("#Dob").val(),
+                Age: $("#Age").val(),
+                MaritalStatus: $("#MaritalStatus").is(":checked")
+            }
+            var file = $("#Picture")[0].files[0];
+
+            var spotList = $("#SpotContainer select option:selected");
+
+            //add all spot in data
+            $.each(spotList, function () {
+                data.append("spot", $(this).val());
+            });
+
+            data.append("postedClient", JSON.stringify(clientData));
+            data.append("file", file);
+            data.append("ClientId", $("#ClientId").val());
+
+            $.ajax({
+                url: "/MasterDetail/Create",
+                type: "POST",
+                dataType: "JSON",
+                contentType: false,
+                processData: false,
+                data: data,
+                success: function (response) {
+                    window.location.reload();
+                }
+            });
+        }
+
+
+        //Edit Entry
+        $(document).on("click", "#btnEntryEdit", function () {
+            var parent = $(this).parent().parent();
+            var ClientId = $('input[name="client.ClientId"]', parent).val();
+            var ClientName = $('input[name="client.ClientName"]', parent).val();
+            var BirthDate = $('input[name="client.BirthDate"]', parent).val();
+            BirthDate = new Date(BirthDate).toISOString().slice(0, 10);
+            var Age = $('input[name="client.Age"]', parent).val();
+            //var Picture = $('input[name="client.Picture"]', parent).val();
+            var MaritalStatus = $('input[name="client.MaritalStatus"]', parent).val();
+            var client_Picture = $('input[name="client.Picture"]', parent).val();
+            console.log(client_Picture);
+
+            $("#ClientId").val(ClientId);
+            $("#ClientName").val(ClientName);
+            $("#Dob").val(BirthDate);
+            $("#Age").val(Age);
+            $("#clientPicture").attr('src', client_Picture.toString());
+
+            if (MaritalStatus == "True") {
+
+                $("#MaritalStatus").attr('checked', true);
+            } else {
+                $("#MaritalStatus").attr('checked', false);
+            }
+
+            var spotContainer = $("#SpotContainer");
+            spotContainer.empty();
+            var clientSpotList = $('input[name="singleSpot"]', parent);
+
+            $.each(clientSpotList, function () {
+                $.ajax({
+                    url: "/MasterDetail/AddNewSpot/"+$(this).val(),
+                    type: "GET",
+                    success: function (data) {
+                        spotContainer.append(data);
+                    }
+                });
+            });
+
+            $("#BookingModal").modal('show');
+
+        });
+
+
+        $("#BookingModal").on('hidden.bs.modal', function () {
+            window.location.reload();
+        });
+
+        $(document).on("click", "#btnEntryDelete", function (e) {
+            e.preventDefault();
+
+            var href = $(this).attr("href");
+            console.log(href);
+
+            $.ajax({
+                url: href,
+                type: "GET",
+                success: function (data) {
+                    window.location.reload();
+                }
+            });
+        });
+
+    </script>
+}
